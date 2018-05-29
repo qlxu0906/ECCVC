@@ -3,21 +3,47 @@
 #
 # Author: Liangqi Li
 # Creating Date: May 24, 2018
-# Latest rectifying: May 24, 2018
+# Latest rectifying: May 29, 2018
 # -----------------------------------------------------
+import argparse
 import os
 import random
 
 import face_recognition
 import matplotlib.pyplot as plt
+import sfd_demo
+
+from __init__ import clock_non_return
 
 
-def show_detection_example(im_path):
+def parse_args():
+    """Parse input arguments"""
+
+    parser = argparse.ArgumentParser(description='Face Detection')
+    parser.add_argument('--data_dir', default='', type=str)
+    parser.add_argument('--tool', default='face_rec', type=str)
+
+    args = parser.parse_args()
+
+    return args
+
+
+def show_detection_example(root_dir, tool='face_rec'):
     """Show a single image and its detecting results"""
 
-    img = face_recognition.load_image_file(im_path)
-    face_locations = face_recognition.face_locations(
-        img, number_of_times_to_upsample=0, model='cnn')
+    # Randomly pick one image and show the faces detected
+    movie_dir = os.path.join(root_dir, random.choice(os.listdir(root_dir)))
+    im_dir = os.path.join(movie_dir, 'candidates')
+    im_path = os.path.join(im_dir, random.choice(os.listdir(im_dir)))
+
+    if tool == 'face_rec':
+        img = face_recognition.load_image_file(im_path)
+        face_locations = face_recognition.face_locations(
+            img, number_of_times_to_upsample=0, model='cnn')
+    elif tool == 'sfd':
+        face_locations = sfd_demo.demo(im_path)
+    else:
+        raise KeyError(tool)
     print('{} face(s) found in this image.'.format(len(face_locations)))
 
     fig, ax = plt.subplots()
@@ -39,16 +65,12 @@ def show_detection_example(im_path):
     plt.close(fig)
 
 
+@clock_non_return
 def main():
 
-    data_dir = '/home/liliangqi/hdd/datasets/ECCVchallenge/' + \
-               'person_search_trainval/train'
+    opt = parse_args()
+    show_detection_example(opt.data_dir)
 
-    # Randomly pick one image and show the faces detected
-    movie_dir = os.path.join(data_dir, random.choice(os.listdir(data_dir)))
-    im_dir = os.path.join(movie_dir, 'candidates')
-    im_path = os.path.join(im_dir, random.choice(os.listdir(im_dir)))
-    show_detection_example(im_path)
 
 if __name__ == '__main__':
 
