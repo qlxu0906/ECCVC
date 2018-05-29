@@ -5,15 +5,15 @@
 # Creating Date: May 24, 2018
 # Latest rectifying: May 29, 2018
 # -----------------------------------------------------
-import argparse
 import os
 import random
 
 import face_recognition
 import matplotlib.pyplot as plt
-import sfd_demo
+import argparse
 
 from __init__ import clock_non_return
+import sfd_demo
 
 
 def parse_args():
