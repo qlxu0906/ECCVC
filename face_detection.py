@@ -51,7 +51,12 @@ def show_detection_example(root_dir, tool='face_rec'):
     plt.axis('off')
     for face_loc in face_locations:
         # Print the location of each face
-        y1, x2, y2, x1 = face_loc
+        if tool == 'face_rec':
+            y1, x2, y2, x1 = face_loc
+        elif tool == 'sfd':
+            x1, y1, x2, y2 = face_loc
+        else:
+            raise KeyError(tool)
         print('A face is located at [({}, {}), ({}, {})]'.format(
             x1, y1, x2, y2))
 
@@ -69,7 +74,7 @@ def show_detection_example(root_dir, tool='face_rec'):
 def main():
 
     opt = parse_args()
-    show_detection_example(opt.data_dir)
+    show_detection_example(opt.data_dir, opt.tool)
 
 
 if __name__ == '__main__':
