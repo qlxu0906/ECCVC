@@ -72,11 +72,9 @@ def show_detection_example(root_dir, tool='face_rec'):
 
 @clock_non_return
 def main():
-
     opt = parse_args()
     show_detection_example(opt.data_dir, opt.tool)
 
 
 if __name__ == '__main__':
-
     main()
