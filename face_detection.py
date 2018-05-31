@@ -72,6 +72,19 @@ def show_detection_example(root_dir, tool='face_rec'):
     plt.close(fig)
 
 
+def face_in_person(f_box, p_box):
+    """
+    Judge if the `f_box` is contained by the `p_box`
+    ---
+    param:
+        f_box: a ndarray that represents the location of the face
+        p_box: a ndarray that represents the location of the person
+    """
+
+    return f_box[0] > p_box[0] and f_box[1] > p_box[1] and \
+           f_box[2] < p_box[2] and f_box[3] < p_box[3]
+
+
 def assign_id_to_face(im_path, g_df, tool):
     """
     Detect faces and assign them with IDs from person
@@ -103,10 +116,18 @@ def assign_id_to_face(im_path, g_df, tool):
         else:
             raise KeyError(tool)
 
-        face_box = np.array([x1, y1, x2 - x1, y2 - y1])
+        face_box = np.array([x1, y1, x2, y2])
         for i in range(g_df.shape[0]):
             person_box = g_df.ix[i, 'x1': 'del_y'].as_matrix()
+            person_box[2] += person_box[0]
+            person_box[3] += person_box[1]
             person_id = g_df.ix[i, 'pid']
+            if face_in_person(face_box, person_box):
+                faces.append((face_box, person_id))
+                # TODO: One face contained by more than one person
+                break
+
+    return faces
 
 
 @clock_non_return
