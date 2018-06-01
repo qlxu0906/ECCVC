@@ -82,7 +82,7 @@ def face_in_person(f_box, p_box):
     """
 
     return f_box[0] > p_box[0] and f_box[1] > p_box[1] and \
-           f_box[2] < p_box[2] and f_box[3] < p_box[3]
+        f_box[2] < p_box[2] and f_box[3] < p_box[3]
 
 
 def assign_id_to_face(im_path, g_df, tool):
@@ -94,7 +94,7 @@ def assign_id_to_face(im_path, g_df, tool):
         g_df: DataFrame that only contain information about a single image
         tool: type of detector
     return:
-
+        faces: a list that contains face locations and corresponding ID
     """
 
     if tool == 'face_rec':
@@ -107,8 +107,12 @@ def assign_id_to_face(im_path, g_df, tool):
         raise KeyError(tool)
 
     faces = []
+    person_boxes = g_df.loc[:, 'x1': 'del_y'].as_matrix()
+    person_boxes[:, 2] += person_boxes[:, 0]
+    person_boxes[:, 3] += person_boxes[:, 1]
+    pids = g_df['pid'].values
+
     for face_loc in face_locations:
-        # Print the location of each face
         if tool == 'face_rec':
             y1, x2, y2, x1 = face_loc
         elif tool == 'sfd':
@@ -117,24 +121,94 @@ def assign_id_to_face(im_path, g_df, tool):
             raise KeyError(tool)
 
         face_box = np.array([x1, y1, x2, y2])
-        for i in range(g_df.shape[0]):
-            person_box = g_df.ix[i, 'x1': 'del_y'].as_matrix()
-            person_box[2] += person_box[0]
-            person_box[3] += person_box[1]
-            person_id = g_df.ix[i, 'pid']
+        for person_box, pid in zip(person_boxes, pids):
+            # # Show current person and face
+            # fig, ax = plt.subplots()
+            # ax.imshow(plt.imread(im_path))
+            # plt.axis('off')
+            # ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False,
+            #                            edgecolor='#4CAF50', linewidth=3.5))
+            # ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False,
+            #                            edgecolor='white', linewidth=1))
+            # ax.add_patch(plt.Rectangle(
+            #     (person_box[0], person_box[1]), person_box[2] - person_box[0],
+            #     person_box[3] - person_box[1], fill=False, edgecolor='#66D9EF',
+            #     linewidth=3.5))
+            # ax.add_patch(plt.Rectangle(
+            #     (person_box[0], person_box[1]), person_box[2] - person_box[0],
+            #     person_box[3] - person_box[1], fill=False, edgecolor='white',
+            #     linewidth=1))
+            # plt.tight_layout()
+            # plt.show()
+            # plt.close(fig)
+
             if face_in_person(face_box, person_box):
-                faces.append((face_box, person_id))
+                # Return (x1, y1, w, h)
+                face_box[2] -= face_box[0]
+                face_box[3] -= face_box[1]
+                faces.append((face_box, pid))
                 # TODO: One face contained by more than one person
                 break
 
     return faces
 
 
+def get_face_annotations(anno_dir, tool='face_rec'):
+    """Get face annotations as DataFrame"""
+
+    galleries = pd.read_csv(os.path.join(anno_dir, 'trainGalleriesDF.csv'))
+    data_dir = os.path.join(anno_dir, 'train')
+    movies = os.listdir(data_dir)
+
+    images_with_no_person = []
+    f_movies = []
+    f_imnames = []
+    f_boxes = np.zeros((1, 4), dtype=np.int32)
+    f_pids = []
+
+    for i, movie in enumerate(movies, 1):
+        candidates_dir = os.path.join(data_dir, movie, 'candidates')
+        g_imnames = os.listdir(candidates_dir)
+        for j, g_imname in enumerate(g_imnames, 1):
+            print('Movie {}/{}, image {}/{}'.format(
+                i, len(movies), j, len(g_imnames)))
+            if g_imname not in galleries['imname'].values:
+                images_with_no_person.append(g_imname)
+                continue
+            g_df = galleries.query('movie==@movie and imname==@g_imname')
+            g_impath = os.path.join(candidates_dir, g_imname)
+            g_faces = assign_id_to_face(g_impath, g_df, tool)
+            if len(g_faces) == 0:
+                continue
+            for g_face in g_faces:
+                f_box, f_id = g_face
+                f_boxes = np.vstack((f_boxes, f_box))
+                f_pids.append(f_id)
+                f_movies.append(movie)
+                f_imnames.append(g_imname)
+
+    # Remove the first row
+    f_boxes = f_boxes[1:]
+    faces = pd.DataFrame(f_boxes, columns=['x1', 'y1', 'del_x', 'del_y'])
+    faces['movie'] = f_movies
+    faces['imname'] = f_imnames
+    faces['pid'] = f_pids
+
+    # Indicate the order of the column names
+    ordered_columns = ['movie', 'imname', 'x1', 'y1', 'del_x', 'del_y', 'pid']
+    faces = faces[ordered_columns]
+
+    # Save the DataFrames to csv files
+    faces.to_csv(os.path.join(
+        anno_dir, 'trainFacesDF_{}.csv'.format(tool)), index=False)
+
+
 @clock_non_return
 def main():
     opt = parse_args()
-    show_detection_example(opt.data_dir, opt.tool)
-
+    # show_detection_example(os.path.join(opt.data_dir, 'train'), opt.tool)
+    get_face_annotations(opt.data_dir, opt.tool)
 
 if __name__ == '__main__':
+
     main()
