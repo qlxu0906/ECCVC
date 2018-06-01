@@ -3,7 +3,7 @@
 #
 # Author: Liangqi Li
 # Creating Date: May 24, 2018
-# Latest rectifying: May 29, 2018
+# Latest rectifying: Jun 1, 2018
 # -----------------------------------------------------
 import os
 import random
@@ -13,9 +13,11 @@ import matplotlib.pyplot as plt
 import argparse
 import numpy as np
 import pandas as pd
+import torch
 
 from __init__ import clock_non_return
-import sfd_demo
+import SFD.detection as sfd_detection
+import SFD.net_s3fd as net_s3fd
 
 
 def parse_args():
@@ -24,13 +26,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Face Detection')
     parser.add_argument('--data_dir', default='', type=str)
     parser.add_argument('--tool', default='face_rec', type=str)
+    parser.add_argument('--model_dir', default='', type=str)
 
     args = parser.parse_args()
 
     return args
 
 
-def show_detection_example(root_dir, tool='face_rec'):
+def show_detection_example(root_dir, tool='face_rec', model_path=None):
     """Show a single image and its detecting results"""
 
     # Randomly pick one image and show the faces detected
@@ -43,7 +46,12 @@ def show_detection_example(root_dir, tool='face_rec'):
         face_locations = face_recognition.face_locations(
             img, number_of_times_to_upsample=0, model='cnn')
     elif tool == 'sfd':
-        face_locations = sfd_demo.demo(im_path)
+        assert model_path is not None
+        net = net_s3fd.s3fd()
+        net.load_state_dict(torch.load(model_path))
+        net.cuda()
+        net.eval()
+        face_locations = sfd_detection.output(net, im_path)
     else:
         raise KeyError(tool)
     print('{} face(s) found in this image.'.format(len(face_locations)))
@@ -72,6 +80,35 @@ def show_detection_example(root_dir, tool='face_rec'):
     plt.close(fig)
 
 
+def show_perosn_face(im_path, f_box, p_box):
+    """
+    Show the person and the face in the image
+    ---
+    param:
+        f_box: a ndarray that represents the location of the face
+        p_box: a ndarray that represents the location of the person
+    """
+
+    fig, ax = plt.subplots()
+    ax.imshow(plt.imread(im_path))
+    plt.axis('off')
+    ax.add_patch(plt.Rectangle(
+        (f_box[0], f_box[1]), f_box[2] - f_box[0], f_box[3] - f_box[1],
+        fill=False, edgecolor='#4CAF50', linewidth=3.5))
+    ax.add_patch(plt.Rectangle(
+        (f_box[0], f_box[1]), f_box[2] - f_box[0], f_box[3] - f_box[1],
+        fill=False, edgecolor='white', linewidth=1))
+    ax.add_patch(plt.Rectangle(
+        (p_box[0], p_box[1]), p_box[2] - p_box[0], p_box[3] - p_box[1],
+        fill=False, edgecolor='#66D9EF', linewidth=3.5))
+    ax.add_patch(plt.Rectangle(
+        (p_box[0], p_box[1]), p_box[2] - p_box[0], p_box[3] - p_box[1],
+        fill=False, edgecolor='white', linewidth=1))
+    plt.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+
 def face_in_person(f_box, p_box):
     """
     Judge if the `f_box` is contained by the `p_box`
@@ -85,7 +122,7 @@ def face_in_person(f_box, p_box):
         f_box[2] < p_box[2] and f_box[3] < p_box[3]
 
 
-def assign_id_to_face(im_path, g_df, tool):
+def assign_id_to_face(im_path, g_df, tool, net=None):
     """
     Detect faces and assign them with IDs from person
     ---
@@ -102,7 +139,8 @@ def assign_id_to_face(im_path, g_df, tool):
         face_locations = face_recognition.face_locations(
             img, number_of_times_to_upsample=0, model='cnn')
     elif tool == 'sfd':
-        face_locations = sfd_demo.demo(im_path)
+        assert net is not None
+        face_locations = sfd_detection.output(net, im_path)
     else:
         raise KeyError(tool)
 
@@ -122,25 +160,8 @@ def assign_id_to_face(im_path, g_df, tool):
 
         face_box = np.array([x1, y1, x2, y2])
         for person_box, pid in zip(person_boxes, pids):
-            # # Show current person and face
-            # fig, ax = plt.subplots()
-            # ax.imshow(plt.imread(im_path))
-            # plt.axis('off')
-            # ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False,
-            #                            edgecolor='#4CAF50', linewidth=3.5))
-            # ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False,
-            #                            edgecolor='white', linewidth=1))
-            # ax.add_patch(plt.Rectangle(
-            #     (person_box[0], person_box[1]), person_box[2] - person_box[0],
-            #     person_box[3] - person_box[1], fill=False, edgecolor='#66D9EF',
-            #     linewidth=3.5))
-            # ax.add_patch(plt.Rectangle(
-            #     (person_box[0], person_box[1]), person_box[2] - person_box[0],
-            #     person_box[3] - person_box[1], fill=False, edgecolor='white',
-            #     linewidth=1))
-            # plt.tight_layout()
-            # plt.show()
-            # plt.close(fig)
+            # Show current person and face
+            show_perosn_face(im_path, face_box, person_box)
 
             if face_in_person(face_box, person_box):
                 # Return (x1, y1, w, h)
@@ -153,12 +174,21 @@ def assign_id_to_face(im_path, g_df, tool):
     return faces
 
 
-def get_face_annotations(anno_dir, tool='face_rec'):
+def get_face_annotations(anno_dir, tool='face_rec', model_path=None):
     """Get face annotations as DataFrame"""
 
     galleries = pd.read_csv(os.path.join(anno_dir, 'trainGalleriesDF.csv'))
     data_dir = os.path.join(anno_dir, 'train')
     movies = os.listdir(data_dir)
+
+    if tool == 'sfd':
+        assert model_path is not None
+        net = net_s3fd.s3fd()
+        net.load_state_dict(torch.load(model_path))
+        net.cuda()
+        net.eval()
+    else:
+        net = None
 
     images_with_no_person = []
     f_movies = []
@@ -177,7 +207,7 @@ def get_face_annotations(anno_dir, tool='face_rec'):
                 continue
             g_df = galleries.query('movie==@movie and imname==@g_imname')
             g_impath = os.path.join(candidates_dir, g_imname)
-            g_faces = assign_id_to_face(g_impath, g_df, tool)
+            g_faces = assign_id_to_face(g_impath, g_df, tool, net)
             if len(g_faces) == 0:
                 continue
             for g_face in g_faces:
@@ -205,9 +235,12 @@ def get_face_annotations(anno_dir, tool='face_rec'):
 
 @clock_non_return
 def main():
+
     opt = parse_args()
-    # show_detection_example(os.path.join(opt.data_dir, 'train'), opt.tool)
-    get_face_annotations(opt.data_dir, opt.tool)
+    show_detection_example(os.path.join(opt.data_dir, 'train'),
+                           opt.tool, opt.model_dir)
+    get_face_annotations(opt.data_dir, opt.tool, opt.model_dir)
+
 
 if __name__ == '__main__':
 
