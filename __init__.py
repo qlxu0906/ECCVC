@@ -33,7 +33,3 @@ def clock_non_return(func):
 def add_path(dir):
     if dir not in sys.path:
         sys.path.append(dir)
-
-
-# Add the path of the face detector
-add_path('../SFD_pytorch')
