@@ -356,29 +356,6 @@ def remove_outliers(anno_dir):
     faces_rec.to_csv(os.path.join(
         anno_dir, 'trainCastFacesDF_face_rec.csv'), index=False)
 
-    # Process faces produced by `SFD`
-    faces_sfd = pd.read_csv(os.path.join(
-        anno_dir, 'trainCastFacesDF_sfd.csv'))
-    outliers_sfd = []
-
-    for movie in set(faces_sfd['movie']):
-        mv_df = faces_sfd.query('movie==@movie')
-        for im_name in set(mv_df['imname']):
-            im_df = mv_df.query('imname==@im_name')
-            if im_df.shape[0] > 1:
-                im_path = os.path.join(
-                    anno_dir, 'train', movie, 'cast', im_name)
-                show_faces(im_path, list(im_df.index),
-                           im_df.loc[:, 'x1': 'del_y'].as_matrix())
-                for _ in range(im_df.shape[0] - 1):
-                    outliers_sfd.append(int(input('Enter the outlier: ')))
-
-    for outlier in outliers_sfd:
-        faces_sfd.drop(outlier, inplace=True)
-    faces_sfd.index = range(faces_sfd.shape[0])
-    faces_sfd.to_csv(os.path.join(
-        anno_dir, 'trainCastFacesDF_sfd.csv'), index=False)
-
 
 @clock_non_return
 def main():
