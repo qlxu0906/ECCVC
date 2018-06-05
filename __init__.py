@@ -3,7 +3,7 @@
 #
 # Author: Liangqi Li
 # Creating Date: May 29, 2018
-# Latest rectifying: May 29, 2018
+# Latest rectifying: Jun 5, 2018
 # -----------------------------------------------------
 import sys
 import time
@@ -30,6 +30,6 @@ def clock_non_return(func):
     return clocked
 
 
-def add_path(dir):
+def add_path(path):
     if dir not in sys.path:
-        sys.path.append(dir)
+        sys.path.append(path)
