@@ -3,7 +3,7 @@
 #
 # Author: Liangqi Li
 # Creating Date: May 24, 2018
-# Latest rectifying: Jun 1, 2018
+# Latest rectifying: Jun 4, 2018
 # -----------------------------------------------------
 import os
 import random
