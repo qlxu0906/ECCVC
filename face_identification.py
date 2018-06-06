@@ -156,12 +156,16 @@ def match_val_candidates(root_dir):
     data_dir = os.path.join(root_dir, 'val')
 
     matching_result = {}
-    for movie in os.listdir(data_dir):
+    movies = os.listdir(data_dir)
+    for i, movie in enumerate(movies, 1):
         matching_result[movie] = {}
         movie_dir = os.path.join(data_dir, movie)
 
         cast_dir = os.path.join(movie_dir, 'cast')
-        for cast_imname in os.listdir(cast_dir):
+        casts = os.listdir(cast_dir)
+        for j, cast_imname in enumerate(casts, 1):
+            print('Processing movie {}/{}, cast {}/{}'.format(
+                i, len(movies), j, len(casts)))
             cast_impath = os.path.join(cast_dir, cast_imname)
             cast_img = np.array(Image.open(cast_impath))
             cast_face_encodings = face_recognition.face_encodings(cast_img)
@@ -227,6 +231,34 @@ def fix_matching_result(root_dir):
         json.dump(matching_result, f, indent=4)
 
 
+def evaluate_matching_result(root_dir):
+    """Evaluate the accuracy of the matching result"""
+
+    galleries_df = pd.read_csv(os.path.join(root_dir, 'valGalleriesDF.csv'))
+    file_name = 'matching_val_results.json'
+    with open(os.path.join(root_dir, file_name), 'r') as f:
+        matching_result = json.load(f)
+
+    correct = 0
+    total = 0
+
+    for movie in matching_result.keys():
+        for cast in matching_result[movie]:
+            total += 1
+            cast_pid = cast[:-4]
+            cand_id = matching_result[movie][cast]
+            if cand_id == -1:
+                continue
+            cand_df = galleries_df.query('movie==@movie and id==@cand_id')
+            assert cand_df.shape[0] == 1
+            cand_pid = cand_df.iloc[0]['pid']
+            if cast_pid == cand_pid:
+                correct += 1
+
+    accuracy = correct / total * 100
+    print('Matching accuracy on val dataset is {:.2f}%.'.format(accuracy))
+
+
 @clock_non_return
 def main():
 
@@ -234,9 +266,9 @@ def main():
                'person_search_trainval'
     # show_identification_example(data_dir)
     # show_distance_example(data_dir)
-    # match_val_candidates(data_dir)
-    fix_matching_result(data_dir)
-
+    match_val_candidates(data_dir)
+    # fix_matching_result(data_dir)
+    # evaluate_matching_result(data_dir)
 
 if __name__ == '__main__':
 
