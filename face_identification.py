@@ -168,7 +168,9 @@ def match_val_candidates(root_dir):
                 i, len(movies), j, len(casts)))
             cast_impath = os.path.join(cast_dir, cast_imname)
             cast_img = np.array(Image.open(cast_impath))
-            cast_face_encodings = face_recognition.face_encodings(cast_img)
+            face_locs = face_recognition.face_locations(cast_img, model='cnn')
+            cast_face_encodings = face_recognition.face_encodings(
+                cast_img, face_locs)
             if len(cast_face_encodings) == 0:
                 # Maybe the detector dose not detect any faces in cast image
                 matching_result[movie][cast_imname] = -1
@@ -185,8 +187,10 @@ def match_val_candidates(root_dir):
                 cur_perosn_box = mv_gallery_df.loc[
                                 index, 'x1': 'del_y'].as_matrix()
                 cur_person_img = crop_image(cur_impath, cur_perosn_box)
+                cur_locs = face_recognition.face_locations(cur_person_img,
+                                                           model='cnn')
                 cur_face_encodings = face_recognition.face_encodings(
-                    cur_person_img)
+                    cur_person_img, cur_locs)
 
                 # Maybe there is no face in a candidate image box
                 if len(cur_face_encodings):
@@ -268,7 +272,8 @@ def main():
     # show_distance_example(data_dir)
     match_val_candidates(data_dir)
     # fix_matching_result(data_dir)
-    # evaluate_matching_result(data_dir)
+    evaluate_matching_result(data_dir)
+
 
 if __name__ == '__main__':
 
