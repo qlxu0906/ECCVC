@@ -235,7 +235,7 @@ def fix_matching_result(root_dir):
         json.dump(matching_result, f, indent=4)
 
 
-def evaluate_matching_result(root_dir):
+def evaluate_matching_result(root_dir, num_result):
     """Evaluate the accuracy of the matching result"""
 
     galleries_df = pd.read_csv(os.path.join(root_dir, 'valGalleriesDF.csv'))
@@ -246,21 +246,25 @@ def evaluate_matching_result(root_dir):
     correct = 0
     total = 0
 
-    for movie in matching_result.keys():
-        for cast in matching_result[movie]:
-            total += 1
-            cast_pid = cast[:-4]
-            cand_id = matching_result[movie][cast]
-            if cand_id == -1:
-                continue
-            cand_df = galleries_df.query('movie==@movie and id==@cand_id')
-            assert cand_df.shape[0] == 1
-            cand_pid = cand_df.iloc[0]['pid']
-            if cast_pid == cand_pid:
-                correct += 1
+    for i in range(num_result):
+        for movie in matching_result.keys():
+            for cast in matching_result[movie]:
+                total += 1
+                cast_pid = cast[:-4]
+                cand_ids = matching_result[movie][cast]
+                if cand_ids == -1:
+                    continue
+                cand_id = cand_ids[i]
+                assert cand_id != -1
+                cand_df = galleries_df.query('movie==@movie and id==@cand_id')
+                assert cand_df.shape[0] == 1
+                cand_pid = cand_df.iloc[0]['pid']
+                if cast_pid == cand_pid:
+                    correct += 1
 
-    accuracy = correct / total * 100
-    print('Matching accuracy on val dataset is {:.2f}%.'.format(accuracy))
+        accuracy = correct / total * 100
+        print('{}-th matching accuracy on val dataset is {:.2f}%.'.format(
+            i + 1, accuracy))
 
 
 @clock_non_return
@@ -270,9 +274,9 @@ def main():
                'person_search_trainval'
     # show_identification_example(data_dir)
     # show_distance_example(data_dir)
-    match_val_candidates(data_dir)
+    # match_val_candidates(data_dir)
     # fix_matching_result(data_dir)
-    evaluate_matching_result(data_dir)
+    evaluate_matching_result(data_dir, 5)
 
 
 if __name__ == '__main__':
