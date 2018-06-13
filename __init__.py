@@ -9,6 +9,8 @@ import sys
 import time
 import functools
 
+# import matplotlib
+
 
 def clock_non_return(func):
     @functools.wraps(func)
@@ -33,3 +35,5 @@ def clock_non_return(func):
 def add_path(path):
     if dir not in sys.path:
         sys.path.append(path)
+
+# matplotlib.use('Qt5Agg')
