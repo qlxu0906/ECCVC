@@ -26,6 +26,7 @@ def evaluate_final_result():
     movie, pid = cast.split('_')
     for i, cand in enumerate(cands.split(','), 1):
         cur_id = int(cand.split('_')[-1])
+        assert cur_id in val_gallery_df
         cur_df = val_gallery_df.query('movie==@movie and id==@cur_id')
         cur_pid = cur_df.iloc[0]['pid']
         cur_match = pid == cur_pid
