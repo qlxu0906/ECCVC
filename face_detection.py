@@ -108,7 +108,7 @@ def show_detection_example(root_dir, tool='face_rec', model_path=None):
     plt.close(fig)
 
 
-def show_perosn_face(im_path, f_box, p_box):
+def show_person_face(im_path, f_box, p_box):
     """
     Show the person and the face in the image
     ---
@@ -189,7 +189,7 @@ def assign_id_to_face(im_path, g_df, tool, net=None):
         face_box = np.array([x1, y1, x2, y2])
         for person_box, pid in zip(person_boxes, pids):
             # Show current person and face
-            show_perosn_face(im_path, face_box, person_box)
+            show_person_face(im_path, face_box, person_box)
 
             if face_in_person(face_box, person_box):
                 # Return (x1, y1, w, h)
