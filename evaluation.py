@@ -7,6 +7,7 @@
 # -----------------------------------------------------
 import os
 import random
+import json
 
 from __init__ import clock_non_return
 
@@ -184,8 +185,101 @@ def show_unmatched_ones(shown_num):
                                    len(cands), cast_save_dir)
 
 
-if __name__ == '__main__':
+def analyze_results(root_dir):
+    """Analyze the final results and output a csv file"""
+
+    val_gallery_df = pd.read_csv(os.path.join(root_dir, 'valGalleriesDF.csv'))
+    with open(os.path.join(root_dir, 'result.txt'), 'r') as f1:
+        results = f1.readlines()
+    with open(os.path.join(root_dir, 'aps.json'), 'r') as f2:
+        aps_dict = json.load(f2)
+    with open(os.path.join(root_dir, 'val_label.json'), 'r') as f3:
+        val_label = json.load(f3)
+
+    movies = []
+    casts = []
+    aps = []
+    num_pos = []
+    for i in range(1, 6):
+        exec('queries_{} = []'.format(i))
+        exec('pos_b{} = []'.format(i))
+
+    for line in results:
+        cast_id, cur_results = line.split(' ')
+        movie, pid = cast_id.split('_')
+        cands = cur_results.split(',')
+
+        movies.append(movie)
+        casts.append(pid)
+        aps.append(round(aps_dict[cast_id], 3))
+        num_pos.append(len(val_label[cast_id]))
+
+        # Record the matching results (True or False) for the queries
+        # This reflects the performance of face recognition
+        for i in range(1, 6):
+            cur_id = int(cands[i].split('_')[-1])
+            assert type(cur_id) == int
+            cur_df = val_gallery_df.query('movie==@movie and id==@cur_id')
+            cur_pid = cur_df.iloc[0]['pid']
+            cur_matched = pid == cur_pid
+            assert type(cur_matched) == bool
+            exec('queries_{}.append(cur_matched)'.format(i))
+
+        # Record the indices of the 5 hardest positive samples
+        # This reflects the shortcomings of our Re-ID model to identify some
+        #   hard samples
+        hard_index = 0
+        for i, cand in enumerate(cands[::-1]):
+            if hard_index >= 5:
+                break
+            cur_id = int(cand.split('_')[-1])
+            assert type(cur_id) == int
+            cur_df = val_gallery_df.query('movie==@movie and id==@cur_id')
+            cur_pid = cur_df.iloc[0]['pid']
+            if pid == cur_pid:
+                hard_index += 1
+                exec('pos_b{}.append(len(cands)-i)'.format(hard_index))
+
+        # Maybe the quantity of all positive samples is less than 5
+        if hard_index < 5:
+            for i in range(hard_index+1, 6):
+                exec('pos_b{}.append(-1)'.format(i))
+
+    # Indicate the order of the column names
+    ordered_columns = ['movie', 'cast', 'AP', 'num_pos']
+    analysis_df = pd.DataFrame(
+        {'movie': movies, 'cast': casts, 'AP': aps, 'num_pos': num_pos})
+    for i in range(1, 6):
+        exec('analysis_df["Q{}"] = queries_{}'.format(i, i))
+        ordered_columns.append('Q{}'.format(i))
+    for i in range(1, 6):
+        exec('analysis_df["pos{}_i"] = pos_b{}'.format(i, i))
+        ordered_columns.append('pos{}_i'.format(i))
+
+    # Save the analysis results to csv file
+    analysis_df = analysis_df[ordered_columns]
+    analysis_df.to_csv(
+        os.path.join(root_dir, 'analysis_results.csv'), index=False)
+
+
+def main():
+
+    server = os.getcwd().split('/')[1]
+    if server == 'Users':
+        root_dir = '/Users/habor/Desktop/myResearch/ECCVCdataset/' +\
+                   'person_search_trainval'
+    elif server == 'home':
+        root_dir = '/home/liliangqi/hdd/datasets/ECCVchallenge/' + \
+                   'person_search_trainval'
+    else:
+        raise KeyError(server)
 
     # evaluate_final_result()
     # crop_result(730)
-    show_unmatched_ones(5)
+    # show_unmatched_ones(5)
+    analyze_results(root_dir)
+
+
+if __name__ == '__main__':
+
+    main()
