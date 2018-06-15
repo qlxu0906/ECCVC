@@ -113,7 +113,6 @@ def crop_result(length):
     f2.close()
 
 
-@clock_non_return
 def show_unmatched_ones(shown_num):
     """Show the positive samples sorted in the rear"""
 
@@ -145,9 +144,9 @@ def show_unmatched_ones(shown_num):
         cast_imname = pid + '.jpg'
         cast_impath = os.path.join(data_dir, movie, 'cast', cast_imname)
         plt.imshow(plt.imread(cast_impath))
-        # plt.imread(cast_impath)
+        plt.imread(cast_impath)
         plt.axis('off')
-        # plt.show()
+        plt.show()
         plt.savefig(os.path.join(cast_save_dir, cast_imname),
                     bbox_inches='tight')
         plt.close()
@@ -262,6 +261,7 @@ def analyze_results(root_dir):
         os.path.join(root_dir, 'analysis_results.csv'), index=False)
 
 
+@clock_non_return
 def main():
 
     server = os.getcwd().split('/')[1]
@@ -276,7 +276,7 @@ def main():
 
     # evaluate_final_result()
     # crop_result(730)
-    # show_unmatched_ones(5)
+    show_unmatched_ones(5)
     analyze_results(root_dir)
 
 
