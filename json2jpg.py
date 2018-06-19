@@ -7,9 +7,10 @@
 # -----------------------------------------------------
 
 import json
-from PIL import Image
 import os
 import os.path
+
+from PIL import Image
 
 
 def crop(images, name):
@@ -45,15 +46,22 @@ def cropmake(fn, bbox, label, name):
         print("Error: error finding or failure cutting")
 
 
-path = 'E:/study/ECCVchallenge/person_search_trainval/'
-fullpath_t = path + 'train.json'
-fp_t = open(fullpath_t, 'r')
-images_t = json.load(fp_t)
-fp_t.close()
-crop(images_t, 'train')
+def main():
 
-fullpath_v = path + 'val.json'
-fp_v = open(fullpath_v, 'r')
-images_v = json.load(fp_v)
-fp_v.close()
-crop(images_v, 'val')
+    path = 'E:/study/ECCVchallenge/person_search_trainval/'
+    fullpath_t = path + 'train.json'
+    fp_t = open(fullpath_t, 'r')
+    images_t = json.load(fp_t)
+    fp_t.close()
+    crop(images_t, 'train')
+
+    fullpath_v = path + 'val.json'
+    fp_v = open(fullpath_v, 'r')
+    images_v = json.load(fp_v)
+    fp_v.close()
+    crop(images_v, 'val')
+
+
+if __name__ == '__main__':
+
+    main()
